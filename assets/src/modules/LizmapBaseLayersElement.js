@@ -1,4 +1,4 @@
-import LizmapLayerGroup from './LizmapLayerGroup.js';
+import LizmapMapElement from './LizmapMapElement.js';
 
 export class LizmapBaseLayersElement extends HTMLElement {
     constructor() {
@@ -21,16 +21,13 @@ export class LizmapBaseLayersElement extends HTMLElement {
                 const mapElement = document.querySelector(mapSelector);
 
                 if (mapElement) {
-                    if (mapElement.nodeName === "LIZMAP-MAP") {
+                    if (mapElement instanceof LizmapMapElement) {
                         self._mapElement = mapElement;
-                        const baseLayerGroup = new LizmapLayerGroup({
-                            mutuallyExclusive: true,
-                            layersList: mapElement.baseLayers
-                        });
-
-                        mapElement.baseLayerGroup = baseLayerGroup;
-
-                        self.render();
+                        if (mapElement.baseLayers != null && mapElement.baseLayers.length != 0) {
+                            self.render();
+                        } else {
+                            console.warn("Element lizmap-map has no baselayers yet.");
+                        }
                     } else {
                         console.warn("Element is not a lizmap-map element.");
                     }
@@ -46,20 +43,20 @@ export class LizmapBaseLayersElement extends HTMLElement {
     render() {
         let newSelect = document.createElement('select');
 
-        for (let [layerId, config] of this._mapElement.baseLayers) {
+        for (let layerDef of this._mapElement.baseLayers) {
             let newNode = document.createElement('option');
-            newNode.setAttribute('value', layerId);
+            newNode.setAttribute('value', layerDef.id);
             if (config.visible) {
                 newNode.setAttribute('selected', 'selected');
             }
-            newNode.innerText = config.name;
+            newNode.innerText = layerDef.name;
 
             newSelect.appendChild(newNode);
         }
 
         // Event change
         newSelect.onchange = (event) => {
-            this._mapElement.baseLayerVisible = event.target.value;
+            this._mapElement.baseLayersGroup.layerVisible = event.target.value;
         };
 
         this.shadowRoot.appendChild(newSelect);

@@ -3,35 +3,21 @@ import OSM from 'ol/source/OSM.js';
 import Stamen from 'ol/source/Stamen.js';
 
 export default class LizmapLayer {
-    constructor(layerId, visible) {
-        this._OLlayer;
+    constructor(layerId, renderingConfig) {
         this._layerId = layerId;
-        if (layerId === 'osmMapnik') {
-            this._OLlayer = new TileLayer({
-                layerId: layerId,
-                visible: visible,
-                source: new OSM()
-            })
-        } else if (layerId === 'osmStamenToner') {
-            this._OLlayer = new TileLayer({
-                layerId: layerId,
-                visible: visible,
-                source: new Stamen({
-                    layer: 'toner'
-                })
-            });
-        }
-    }
-
-    get OLlayer() {
-        return this._OLlayer;
+        this._layerVisible = renderingConfig.visible;
     }
 
     get layerId() {
         return this._layerId;
     }
 
-    set layerVisible(visible) {
-        this._OLlayer.setVisible(visible);
+    get visibility() {
+        return this._layerVisible;
+    }
+
+    set visibility(visible) {
+        this._layerVisible = visible;
+        return visible;
     }
 }
