@@ -4,7 +4,7 @@ import TileLayer from 'ol/layer/Tile.js';
 import OSM from 'ol/source/OSM.js';
 import Stamen from 'ol/source/Stamen.js';
 
-export default class LizmapOlLayer extend LizmapLayer {
+export default class LizmapOlLayer extends LizmapLayer {
     constructor(layerId, renderingConfig, olGroup=null) {
         this._layerId = layerId;
 

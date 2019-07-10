@@ -3,7 +3,7 @@ import LizmapOlLayer from './LizmapOlLayer.js';
 import LayerGroup from 'ol/layer/Group';
 
 // attribut selected
-export default class LizmapOlLayerGroup extent LizmapLayerGroup {
+export default class LizmapOlLayerGroup extends LizmapLayerGroup {
     constructor(opt_options) {
 
         this._mutuallyExclusive = opt_options.mutuallyExclusive;
