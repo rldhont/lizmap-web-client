@@ -1,6 +1,3 @@
-import TileLayer from 'ol/layer/Tile.js';
-import OSM from 'ol/source/OSM.js';
-import Stamen from 'ol/source/Stamen.js';
 
 export default class LizmapLayer {
     constructor(layerId, renderingConfig) {
