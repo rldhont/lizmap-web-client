@@ -94,6 +94,7 @@ class Proxy
 
         // Parse request XML
         if ($requestXml) {
+            $use_errors = libxml_use_internal_errors(true);
             $xml = simplexml_load_string($requestXml);
             if ($xml) {
                 $request = $xml->getName();
@@ -102,6 +103,32 @@ class Proxy
                     $service = strtoupper($xml['service']);
                 }
             } else {
+                $errormsg = 'An error has been raised when loading requestXml:';
+                $errormsg .= '\n'.$requestXml;
+                foreach (libxml_get_errors() as $error) {
+                    $errormsg .= '\n';
+
+                    switch ($error->level) {
+                        case LIBXML_ERR_WARNING:
+                            $errormsg .= 'Warning '.$error->code.': ';
+
+                            break;
+
+                         case LIBXML_ERR_ERROR:
+                            $errormsg .= 'Error '.$error->code.': ';
+
+                            break;
+
+                        case LIBXML_ERR_FATAL:
+                            $errormsg .= 'Fatal Error '.$error->code.': ';
+
+                            break;
+                    }
+                    $errormsg .= 'Line: '.$error->line.' ';
+                    $errormsg .= 'Column: '.$error->column.' ';
+                    $errormsg .= trim($error->message);
+                }
+                \jLog::log($errormsg, 'error');
                 $requestXml = null;
             }
         }

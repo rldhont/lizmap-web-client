@@ -315,18 +315,36 @@ abstract class OGCRequest
     protected function loadXmlString($xmldata, $name)
     {
         // Get data from XML
-        $use_errors = libxml_use_internal_errors(true);
-        $errorlist = array();
         // Create a DOM instance
+        $use_errors = libxml_use_internal_errors(true);
         $xml = simplexml_load_string($xmldata);
         if (!$xml) {
-            foreach (libxml_get_errors() as $error) {
-                $errorlist[] = $error;
-            }
             $errormsg = 'An error has been raised when loading '.$name.':';
             $errormsg .= '\n'.http_build_query($this->params);
             $errormsg .= '\n'.$xmldata;
-            $errormsg .= '\n'.implode('\n', $errorlist);
+            foreach (libxml_get_errors() as $error) {
+                $errormsg .= '\n';
+
+                switch ($error->level) {
+                    case LIBXML_ERR_WARNING:
+                        $errormsg .= 'Warning '.$error->code.': ';
+
+                        break;
+
+                     case LIBXML_ERR_ERROR:
+                        $errormsg .= 'Error '.$error->code.': ';
+
+                        break;
+
+                    case LIBXML_ERR_FATAL:
+                        $errormsg .= 'Fatal Error '.$error->code.': ';
+
+                        break;
+                }
+                $errormsg .= 'Line: '.$error->line.' ';
+                $errormsg .= 'Column: '.$error->column.' ';
+                $errormsg .= trim($error->message);
+            }
             \jLog::log($errormsg, 'error');
             // return empty html string
             return null;
