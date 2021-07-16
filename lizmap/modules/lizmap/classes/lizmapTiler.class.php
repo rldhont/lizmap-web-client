@@ -80,15 +80,54 @@ class lizmapTiler
             $wmsResult = $wmsRequest->process();
             // Http code error
             if (($wmsResult->code / 100) >= 4) {
+                $errormsg = 'An error has been raised when loading WMS GetCapabilities: HTTP Code '.$wmsResult->code;
+                \jLog::log($errormsg, 'error');
+
                 return null;
             }
             $wms = $wmsResult->data;
             // empty data or service exception, WMS not available
             if (empty($wms) or preg_match('/ServiceExceptionReport/', $wms)) {
+                $errormsg = 'An error has been raised when loading WMS GetCapabilities: ServiceExceptionReport';
+                $errormsg .= '\n'.$wms;
+                \jLog::log($errormsg, 'error');
+
                 return null;
             }
 
+            $use_errors = libxml_use_internal_errors(true);
             $wms_xml = simplexml_load_string($wms);
+            if ($wms_xml === false) {
+                $errormsg = 'An error has been raised when loading WMS GetCapabilities:';
+                $errormsg .= '\n'.$file;
+                foreach (libxml_get_errors() as $error) {
+                    $errormsg .= '\n';
+
+                    switch ($error->level) {
+                        case LIBXML_ERR_WARNING:
+                            $errormsg .= 'Warning '.$error->code.': ';
+
+                            break;
+
+                         case LIBXML_ERR_ERROR:
+                            $errormsg .= 'Error '.$error->code.': ';
+
+                            break;
+
+                        case LIBXML_ERR_FATAL:
+                            $errormsg .= 'Fatal Error '.$error->code.': ';
+
+                            break;
+                    }
+                    $errormsg .= 'Line: '.$error->line.' ';
+                    $errormsg .= 'Column: '.$error->column.' ';
+                    $errormsg .= trim($error->message);
+                }
+                \jLog::log($errormsg, 'error');
+
+                return null;
+            }
+
             $wms_xml->registerXPathNamespace('wms', 'http://www.opengis.net/wms');
             $wms_xml->registerXPathNamespace('xlink', 'http://www.w3.org/1999/xlink');
 
@@ -109,6 +148,7 @@ class lizmapTiler
             'tileMatrixSetList' => null,
             'layerTileInfoList' => null,
         );
+
         if (is_array($tileMatrixSetList) && is_array($layers)) {
             $tileCapabilities->tileMatrixSetList = $tileMatrixSetList;
             $tileCapabilities->layerTileInfoList = $layers;
