@@ -376,8 +376,37 @@ class qgisProject
         if (!file_exists($qgs_path)) {
             throw new Exception('The QGIS project '.$qgs_path.' does not exist!');
         }
+
+        $use_errors = libxml_use_internal_errors(true);
         $xml = simplexml_load_file($qgs_path);
         if ($xml === false) {
+            $errormsg = 'An error has been raised when loading QGIS Project:';
+            $errormsg .= '\n'.$qgs_path;
+            foreach (libxml_get_errors() as $error) {
+                $errormsg .= '\n';
+
+                switch ($error->level) {
+                    case LIBXML_ERR_WARNING:
+                        $errormsg .= 'Warning '.$error->code.': ';
+
+                        break;
+
+                     case LIBXML_ERR_ERROR:
+                        $errormsg .= 'Error '.$error->code.': ';
+
+                        break;
+
+                    case LIBXML_ERR_FATAL:
+                        $errormsg .= 'Fatal Error '.$error->code.': ';
+
+                        break;
+                }
+                $errormsg .= 'Line: '.$error->line.' ';
+                $errormsg .= 'Column: '.$error->column.' ';
+                $errormsg .= trim($error->message);
+            }
+            \jLog::log($errormsg, 'error');
+
             throw new Exception('The QGIS project '.$qgs_path.' has invalid content!');
         }
         $this->xml = $xml;
