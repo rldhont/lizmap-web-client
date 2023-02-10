@@ -486,27 +486,29 @@ class datavizPlot
             }
 
             $wfsrequest = new \Lizmap\Request\WFSRequest($this->lproj, $wfsparams, lizmap::getServices());
-            // FIXME no support of the case where $wfsresponse is the content of serviceException?
+
             $wfsresponse = $wfsrequest->process();
             $features = null;
 
+            // Check code
+            if (floor($wfsresponse->getCode() / 100) >= 4) {
+                return false;
+            }
+            // Check mime/type
+            if (in_array(strtolower($wfsresponse->getMime()), array('text/html', 'text/xml'))) {
+                return false;
+            }
+
             // Check data
             $featureData = null;
-            if (property_exists($wfsresponse, 'data')) {
-                $data = $wfsresponse->data;
 
-                // is the data a file ?
-                if (substr($data, 0, 7) == 'file://' && is_file(substr($data, 7))) {
-                    $data = \jFile::read(substr($data, 7));
-                }
+            // decode features
+            $featureData = json_decode($wfsresponse->getBodyAsString());
 
-                // decode features
-                $featureData = json_decode($data);
-
-                if (empty($featureData) || empty($featureData->features)) {
-                    $featureData = null;
-                }
+            if (empty($featureData) || empty($featureData->features)) {
+                $featureData = null;
             }
+
             if (!$featureData) {
                 return false;
             }
