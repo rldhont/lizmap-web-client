@@ -12,6 +12,9 @@
 
 namespace Lizmap\Request;
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\Request;
+use Psr\Http\Message\StreamInterface;
 use Lizmap\App;
 
 class Proxy
@@ -512,6 +515,75 @@ class Proxy
         }
         // With file_get_contents
         return self::fileProxy($url, $options);
+    }
+
+    /**
+     * Sends a request, and return the body response as a stream.
+     *
+     * @param string     $url     url of the remote data to fetch
+     * @param null|array $options list of options for the http request.
+     *                                   Option items can be: "method", "referer", "proxyHttpBackend",
+     *                                   "headers" (array of headers strings), "body", "debug".
+     *
+     * @return array{0: StreamInterface, 1: string, 2: int} Array containing streamed data (0: StreamInterface), mime type (1: string) and HTTP code (2: int)
+     */
+    public static function getRemoteDataAsStream($url, $options = null)
+    {
+        $options = self::buildOptions($options, 'get', null);
+        list($url, $options) = self::buildHeaders($url, $options);
+
+        if ($options['referer']) {
+            $options['headers']['Referer'] = $options['referer'];
+        }
+
+        $client = new Client(array(
+            // You can set any number of default request options.
+            'timeout' => 2.0,
+        ));
+
+        $request = new Request(
+            $options['method'],
+            $url,
+            $options['headers'],
+            $options['body'],
+        );
+
+        $reqOptions = array(
+            'stream' => true,
+        );
+        $services = self::getServices();
+        if ($services->requestProxyEnabled && $services->requestProxyHost != '') {
+            if ($services->requestProxyType == 'socks5') {
+                $proxy = 'socks5://';
+            } else {
+                $proxy = 'http://';
+            }
+
+            if ($services->requestProxyUser) {
+                $proxy .= urlencode($services->requestProxyUser).':'.urlencode($services->requestProxyPassword).'@';
+            }
+
+            $proxy .= $services->requestProxyHost;
+            if ($services->requestProxyPort) {
+                $proxy .= ':'.$services->requestProxyPort;
+            }
+
+            $noProxy = preg_split('/\s*,\s*/', $services->requestProxyNotForDomain);
+
+            $reqOptions['proxy'] = array(
+                'http' => $proxy, // Use this proxy with "http"
+                'https' => $proxy, // Use this proxy with "https",
+                'no' => $noProxy,    // Don't use a proxy with these
+            );
+        }
+
+        $response = $client->send($request, $reqOptions);
+
+        return array(
+            $response->getBody(),
+            $response->getHeader('Content-Type')[0],
+            $response->getStatusCode()
+        );
     }
 
     /**

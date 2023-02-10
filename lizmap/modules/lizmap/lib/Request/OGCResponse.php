@@ -3,7 +3,7 @@
  * Manage OGC response.
  *
  * @author    3liz
- * @copyright 2015-2022 3liz
+ * @copyright 2015-2023 3liz
  *
  * @see      http://3liz.com
  *
@@ -11,6 +11,9 @@
  */
 
 namespace Lizmap\Request;
+
+use Psr\Http\Message\StreamInterface;
+use GuzzleHttp\Psr7;
 
 class OGCResponse
 {
@@ -25,7 +28,7 @@ class OGCResponse
     public $mime;
 
     /**
-     * @var string the response body as a string
+     * @var StreamInterface|string the response body as a stream or string
      */
     public $data;
 
@@ -42,11 +45,11 @@ class OGCResponse
     /**
      * constructor.
      *
-     * @param int    $code    the HTTP status code of the response
-     * @param string $mime    the MIME type of the response
-     * @param string $data    the response body as a string
-     * @param bool   $cached  the response has been cached, default value false
-     * @param array  $headers default value an empty array
+     * @param int                             $code    the HTTP status code of the response
+     * @param string                          $mime    the MIME type of the response
+     * @param StreamInterface|iterable|string $data    the response body as a string
+     * @param bool                            $cached  the response has been cached, default value false
+     * @param array                           $headers default value an empty array
      */
     public function __construct($code, $mime, $data, $cached = false, $headers = array())
     {
@@ -55,5 +58,81 @@ class OGCResponse
         $this->data = $data;
         $this->cached = $cached;
         $this->headers = $headers;
+    }
+
+    /**
+     * Get the HTTP status code of the response
+     *
+     * @return int
+     */
+    public function getCode()
+    {
+        return $this->code;
+    }
+
+    /**
+     * Get the MIME type of the response
+     *
+     * @return string
+     */
+    public function getMime()
+    {
+        return $this->mime;
+    }
+
+    /**
+     * Get is the response has been cached
+     *
+     * @return bool
+     */
+    public function isCached()
+    {
+        return $this->cached;
+    }
+
+    /**
+     * Get the response's body as string
+     *
+     * @return string
+     */
+    public function getBodyAsString()
+    {
+        if (is_string($this->data)) {
+            if (substr($this->data, 0, 7) == 'file://' && is_file(substr($this->data, 7))) {
+                return $this->getBodyAsStream()->getContents();
+            }
+            return $this->data;
+        } else if(is_iterable($this->data)) {
+            $body = '';
+            foreach ($this->data as $d) {
+                $body .= $d;
+            }
+            return $body;
+        } else {
+            if ($this->data->isSeekable()) {
+                $this->data->rewind();
+            }
+            return $this->data->getContents();
+        }
+    }
+
+    /**
+     * Get the response's body as stream
+     *
+     * @return StreamInterface
+     */
+    public function getBodyAsStream()
+    {
+        if (is_string($this->data) ) {
+            if (substr($this->data, 0, 7) == 'file://' && is_file(substr($this->data, 7))) {
+                $resource = Psr7\Utils::tryFopen(substr($this->data, 7), 'r');
+                return Psr7\Utils::streamFor($resource);
+            }
+            return Psr7\Utils::streamFor($this->data);
+        } else if (is_iterable($this->data)) {
+            return Psr7\Utils::streamFor($this->data);
+        } else {
+            return $this->data;
+        }
     }
 }
