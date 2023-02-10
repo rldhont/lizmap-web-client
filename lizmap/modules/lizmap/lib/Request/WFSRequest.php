@@ -406,12 +406,7 @@ class WFSRequest extends OGCRequest
 
         // Else pass query to QGIS Server
         // Get remote data
-        $response = $this->request(true);
-        $code = $response->code;
-        $mime = $response->mime;
-        $data = $response->data;
-
-        return new OGCResponse($code, $mime, $data);
+        return $this->request(true, true);
     }
 
     /**
@@ -873,10 +868,20 @@ class WFSRequest extends OGCRequest
             return $this->getfeatureQgis();
         }
 
+        return new OGCResponse(200, 'application/vnd.geo+json; charset=utf-8', (function () use ($q){
+            yield '{"type": "FeatureCollection", "features": [';
+            $virg = '';
+            foreach ($q as $d) {
+                yield $virg.$d->geojson;
+                $virg = ',';
+            }
+            yield ']}';
+        })());
+
         // To avoid memory issues, we do not ask PostgreSQL for a unique big line containing the geojson
         // but asked for a feature in JSON per line
         // the we store the data into a file
-        $path = tempnam(sys_get_temp_dir(), 'wfs_'.session_id().'_');
+        /*$path = tempnam(sys_get_temp_dir(), 'wfs_'.session_id().'_');
         $fd = fopen($path, 'w');
         fwrite($fd, '
 {
@@ -892,7 +897,7 @@ class WFSRequest extends OGCRequest
         fwrite($fd, '
 ]}
 ');
-        fclose($fd);
+        fclose($fd);*/
 
         // Return response
         /*return (object) array(
@@ -902,7 +907,7 @@ class WFSRequest extends OGCRequest
             'data' => $path,
             'cached' => false,
         );*/
-        return new OGCResponse(200, 'application/vnd.geo+json; charset=utf-8', 'file://'.$path);
+        //return new OGCResponse(200, 'application/vnd.geo+json; charset=utf-8', 'file://'.$path);
     }
 
     /**

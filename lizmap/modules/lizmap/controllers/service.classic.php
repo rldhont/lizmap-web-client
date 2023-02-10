@@ -4,6 +4,8 @@ use Lizmap\Request\WFSRequest;
 use Lizmap\Request\WMSRequest;
 use Lizmap\Request\WMTSRequest;
 
+use GuzzleHttp\Psr7;
+
 /**
  * Php proxy to access map services.
  *
@@ -320,6 +322,32 @@ class serviceCtrl extends jController
         $rep->content = $ogcResult->data;
         $rep->doDownload = false;
         $rep->outputFileName = $filename;
+        if ($eTag !== '' && $ogcResult->code < 400) {
+            $this->setEtagCacheHeaders($rep, $eTag);
+        }
+        $this->setACAOHeader($rep);
+    }
+
+    /**
+     * @param jResponseStreamed $rep
+     * @param mixed             $ogcResult
+     * @param mixed             $filename
+     * @param mixed             $doDownload
+     * @param mixed             $eTag
+     */
+    protected function setupStreamedResponse($rep, $ogcResult, $filename, $doDownload = false, $eTag = '')
+    {
+        $rep->setHttpStatus($ogcResult->code, \Lizmap\Request\Proxy::getHttpStatusMsg($ogcResult->code));
+        $rep->mimeType = $ogcResult->mime;
+        if ($doDownload) {
+            $rep->addHttpHeader('Content-Disposition', 'attachment; filename="'.str_replace('"', '\"', $filename).'"', false);
+            $rep->addHttpHeader('Content-Description', 'File Transfert', false);
+            $rep->addHttpHeader('Content-Transfer-Encoding', 'binary', false);
+            $rep->addHttpHeader('Pragma', 'public', false);
+            $rep->addHttpHeader('Cache-Control', 'maxage=3600', false);
+        } else {
+            $rep->addHttpHeader('Content-Disposition', 'inline; filename="'.str_replace('"', '\"', $filename).'"', false);
+        }
         if ($eTag !== '' && $ogcResult->code < 400) {
             $this->setEtagCacheHeaders($rep, $eTag);
         }
@@ -839,31 +867,21 @@ class serviceCtrl extends jController
      *
      * @param mixed $wfsRequest
      *
-     * @return jResponseBinary image rendered by the Map Server
+     * @return jResponseBinary|jResponseStreamed WFS GetFeature response
      */
     protected function GetFeature($wfsRequest)
     {
         $result = $wfsRequest->process();
 
-        /** @var jResponseBinary $rep */
-        $rep = $this->getResponse('binary');
-        $this->setupBinaryResponse($rep, $result, 'qgis_server_wfs');
-
         if ($result->code >= 400) {
-            $rep->content = $result->data;
-
+            /** @var jResponseBinary $rep */
+            $rep = $this->getResponse('binary');
+            $this->setupBinaryResponse($rep, $result, 'qgis_server_wfs');
             return $rep;
         }
 
-        if (substr($result->data, 0, 7) == 'file://' && is_file(substr($result->data, 7))) {
-            $rep->fileName = substr($result->data, 7);
-            $rep->deleteFileAfterSending = true;
-            $rep->content = null;
-        } else {
-            $rep->content = $result->data; // causes memory_limit for big content
-        }
-
         // Define file name
+        $outputFileName = 'qgis_server_wfs';
         $typenames = implode('_', array_map('trim', explode(',', $wfsRequest->requestedTypename())));
         $zipped_files = array('shp', 'mif', 'tab');
         $outputformat = 'gml2';
@@ -871,28 +889,33 @@ class serviceCtrl extends jController
             $outputformat = strtolower($this->params['outputformat']);
         }
         if (in_array($outputformat, $zipped_files)) {
-            $rep->outputFileName = $typenames.'.zip';
+            $outputFileName = $typenames.'.zip';
         } else {
-            $rep->outputFileName = $typenames.'.'.$outputformat;
+            $outputFileName = $typenames.'.'.$outputformat;
         }
 
         // Export
+        $doDownload = false;
         $dl = $this->param('dl');
         if ($dl) {
             // force download
-            $rep->doDownload = true;
+            $doDownload = true;
 
-            if ($rep->fileName == '' && $rep->content != '') {
-                // debug 1st line blank from QGIS Server
-                $rep->content = preg_replace('/^[\n\r]/', '', $result->data);
-            }
             // Change file name
             if (in_array($outputformat, $zipped_files)) {
-                $rep->outputFileName = 'export_'.$this->params['typename'].'.zip';
+                $outputFileName = 'export_'.$this->params['typename'].'.zip';
             } else {
-                $rep->outputFileName = 'export_'.$this->params['typename'].'.'.$outputformat;
+                $outputFileName = 'export_'.$this->params['typename'].'.'.$outputformat;
             }
         }
+
+        /** @var jResponseStreamed $rep */
+        $rep = $this->getResponse('streamed');
+        $this->setupStreamedResponse($rep, $result, $outputFileName, $doDownload);
+        $rep->setCallback(function () use ($result) {
+            $output = Psr7\Utils::streamFor(fopen('php://output', 'w+'));
+            Psr7\Utils::copyToStream($result->getBodyAsStream(), $output);
+        });
 
         return $rep;
     }
