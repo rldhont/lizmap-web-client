@@ -213,9 +213,9 @@ abstract class OGCRequest
         $options['loginFilteredOverride'] = \jAcl2::check('lizmap.tools.loginFilteredLayers.override', $this->repository->getKey());
 
         if ($stream) {
-            list($data, $mime, $code) = \Lizmap\Request\Proxy::getRemoteDataAsStream($querystring, $options);
+            $response = \Lizmap\Request\Proxy::getRemoteDataAsStream($querystring, $options);
 
-            return new OGCResponse($code, $mime, $data);
+            return new OGCResponse($response->code, $response->mime, $response->data);
         }
 
         list($data, $mime, $code) = \Lizmap\Request\Proxy::getRemoteData($querystring, $options);

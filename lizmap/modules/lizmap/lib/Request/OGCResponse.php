@@ -15,32 +15,12 @@ namespace Lizmap\Request;
 use Psr\Http\Message\StreamInterface;
 use GuzzleHttp\Psr7;
 
-class OGCResponse
+class OGCResponse extends ProxyResponse
 {
     /**
-     * @var int the HTTP status code of the response
-     */
-    public $code;
-
-    /**
-     * @var string the MIME type of the response
-     */
-    public $mime;
-
-    /**
-     * @var StreamInterface|string the response body as a stream or string
+     * @var StreamInterface|iterable|string the response body as a stream, an iterable or a string
      */
     public $data;
-
-    /**
-     * @var bool the response has been cached
-     */
-    public $cached = false;
-
-    /**
-     * @var array
-     */
-    public $headers = array();
 
     /**
      * constructor.
@@ -58,36 +38,6 @@ class OGCResponse
         $this->data = $data;
         $this->cached = $cached;
         $this->headers = $headers;
-    }
-
-    /**
-     * Get the HTTP status code of the response
-     *
-     * @return int
-     */
-    public function getCode()
-    {
-        return $this->code;
-    }
-
-    /**
-     * Get the MIME type of the response
-     *
-     * @return string
-     */
-    public function getMime()
-    {
-        return $this->mime;
-    }
-
-    /**
-     * Get is the response has been cached
-     *
-     * @return bool
-     */
-    public function isCached()
-    {
-        return $this->cached;
     }
 
     /**

@@ -525,7 +525,7 @@ class Proxy
      *                                   Option items can be: "method", "referer", "proxyHttpBackend",
      *                                   "headers" (array of headers strings), "body", "debug".
      *
-     * @return array{0: StreamInterface, 1: string, 2: int} Array containing streamed data (0: StreamInterface), mime type (1: string) and HTTP code (2: int)
+     * @return ProxyResponse
      */
     public static function getRemoteDataAsStream($url, $options = null)
     {
@@ -579,10 +579,10 @@ class Proxy
 
         $response = $client->send($request, $reqOptions);
 
-        return array(
-            $response->getBody(),
+        return new ProxyResponse(
+            $response->getStatusCode(),
             $response->getHeader('Content-Type')[0],
-            $response->getStatusCode()
+            $response->getBody()
         );
     }
 
