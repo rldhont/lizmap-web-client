@@ -3,12 +3,15 @@
  * Give access to qgis mapLayer configuration.
  *
  * @author    3liz
- * @copyright 2013-2019 3liz
+ * @copyright 2013-2023 3liz
  *
  * @see      http://3liz.com
  *
  * @license Mozilla Public License : http://www.mozilla.org/MPL/
  */
+
+use GuzzleHttp\Psr7;
+
 class qgisVectorLayer extends qgisMapLayer
 {
     // layer type
@@ -1048,7 +1051,7 @@ class qgisVectorLayer extends qgisMapLayer
             'PROPERTYNAME' => implode(',', $properties),
             'OUTPUTFORMAT' => 'GeoJSON',
             'GEOMETRYNAME' => 'none',
-            'EXP_FILTER' => implode(' AND ', $exp_filters),
+            'EXP_FILTER' => implode(' AND ', $exp_filters)
         );
 
         // Perform the request to get the editable features
@@ -1067,6 +1070,14 @@ class qgisVectorLayer extends qgisMapLayer
             return true;
         }
 
+        $featureStream = \Psr7\StreamWrapper::getResource($result->getBodyAsStream());
+        $features = \JsonMachine\Items::fromStream($featureStream, ['pointer' => "/friends"]);
+        if (iterator_count($features) !== 1) {
+            return false;
+        }
+
+        return true;
+/*
         // Get data
         $wfsData = $result->getBodyAsString();
 
@@ -1082,6 +1093,7 @@ class qgisVectorLayer extends qgisMapLayer
         }
 
         return true;
+        */
     }
 
     /**
