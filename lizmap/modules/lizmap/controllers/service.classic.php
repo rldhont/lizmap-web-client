@@ -319,35 +319,11 @@ class serviceCtrl extends jController
     {
         $rep->setHttpStatus($ogcResult->code, \Lizmap\Request\Proxy::getHttpStatusMsg($ogcResult->code));
         $rep->mimeType = $ogcResult->mime;
-        $rep->content = $ogcResult->data;
+        if (is_string($ogcResult->data) || is_callable($ogcResult->data)) {
+            $rep->content = $ogcResult->data;
+        }
         $rep->doDownload = false;
         $rep->outputFileName = $filename;
-        if ($eTag !== '' && $ogcResult->code < 400) {
-            $this->setEtagCacheHeaders($rep, $eTag);
-        }
-        $this->setACAOHeader($rep);
-    }
-
-    /**
-     * @param jResponseStreamed $rep
-     * @param mixed             $ogcResult
-     * @param mixed             $filename
-     * @param mixed             $doDownload
-     * @param mixed             $eTag
-     */
-    protected function setupStreamedResponse($rep, $ogcResult, $filename, $doDownload = false, $eTag = '')
-    {
-        $rep->setHttpStatus($ogcResult->code, \Lizmap\Request\Proxy::getHttpStatusMsg($ogcResult->code));
-        $rep->mimeType = $ogcResult->mime;
-        if ($doDownload) {
-            $rep->addHttpHeader('Content-Disposition', 'attachment; filename="'.str_replace('"', '\"', $filename).'"', false);
-            $rep->addHttpHeader('Content-Description', 'File Transfert', false);
-            $rep->addHttpHeader('Content-Transfer-Encoding', 'binary', false);
-            $rep->addHttpHeader('Pragma', 'public', false);
-            $rep->addHttpHeader('Cache-Control', 'maxage=3600', false);
-        } else {
-            $rep->addHttpHeader('Content-Disposition', 'inline; filename="'.str_replace('"', '\"', $filename).'"', false);
-        }
         if ($eTag !== '' && $ogcResult->code < 400) {
             $this->setEtagCacheHeaders($rep, $eTag);
         }
@@ -867,16 +843,17 @@ class serviceCtrl extends jController
      *
      * @param mixed $wfsRequest
      *
-     * @return jResponseBinary|jResponseStreamed WFS GetFeature response
+     * @return jResponseBinary WFS GetFeature response
      */
     protected function GetFeature($wfsRequest)
     {
         $result = $wfsRequest->process();
 
+        /** @var jResponseBinary $rep */
+        $rep = $this->getResponse('binary');
+        $this->setupBinaryResponse($rep, $result, 'qgis_server_wfs');
+
         if ($result->code >= 400) {
-            /** @var jResponseBinary $rep */
-            $rep = $this->getResponse('binary');
-            $this->setupBinaryResponse($rep, $result, 'qgis_server_wfs');
             return $rep;
         }
 
@@ -909,10 +886,7 @@ class serviceCtrl extends jController
             }
         }
 
-        /** @var jResponseStreamed $rep */
-        $rep = $this->getResponse('streamed');
-        $this->setupStreamedResponse($rep, $result, $outputFileName, $doDownload);
-        $rep->setCallback(function () use ($result) {
+        $rep->setContentCallback(function () use ($result) {
             $output = Psr7\Utils::streamFor(fopen('php://output', 'w+'));
             Psr7\Utils::copyToStream($result->getBodyAsStream(), $output);
         });
