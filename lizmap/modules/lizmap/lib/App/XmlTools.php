@@ -92,4 +92,57 @@ class XmlTools
 
         return $msg;
     }
+
+    /**
+     * Interprets a string of XML into an XML Pull parser.
+     * It acts as a cursor going forward on the document stream and stopping at each node on the way.
+     *
+     * @param string $xml_str a well-formed XML string
+     *
+     * @return \XMLReader an object of class XMLReader with properties at the root document element
+     *                    containing the data held within the XML document.
+     */
+    public static function xmlReaderFromString($xml_str)
+    {
+        $oXml = new \XMLReader();
+        // Set XML
+        $oXml->XML($xml_str);
+
+        // Read until we are at the root document element
+        while ($oXml->read()) {
+            if($oXml->nodeType == \XMLReader::ELEMENT
+                && $oXml->depth == 0) {
+                break;
+            }
+        }
+
+        return $oXml;
+    }
+
+    /**
+     * Interprets an XML file into an XML pull parser.
+     * It acts as a cursor going forward on the document stream and stopping at each node on the way.
+     *
+     * @param string $xml_path the path to the xml file
+     *
+     * @return \XMLReader an object of class XMLReader with properties at the root document element
+     *                    containing the data held within the XML document
+     */
+    public static function xmlReaderFromFile($xml_path)
+    {
+        $oXml = new \XMLReader();
+
+        // Open file
+        $oXml->open($xml_path);
+
+        // Read until we are at the root document element
+        while ($oXml->read()) {
+            if($oXml->nodeType == \XMLReader::ELEMENT
+                && $oXml->depth == 0) {
+                break;
+            }
+        }
+
+        return $oXml;
+    }
 }
