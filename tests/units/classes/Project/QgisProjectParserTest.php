@@ -1092,6 +1092,62 @@ Data is licensed under ODbl, OpenStreetMap contributors',
                 'No Zone',
         );
         $this->assertEquals($expectedOptions, $options);
+
+        $xmlStr = '
+        <Option type="Map">
+          <Option value="1" name="DocumentViewer" type="int"/>
+          <Option value="0" name="DocumentViewerHeight" type="int"/>
+          <Option value="0" name="DocumentViewerWidth" type="int"/>
+          <Option value="true" name="FileWidget" type="bool"/>
+          <Option value="true" name="FileWidgetButton" type="bool"/>
+          <Option value="" name="FileWidgetFilter" type="QString"/>
+          <Option name="PropertyCollection" type="Map">
+            <Option value="" name="name" type="QString"/>
+            <Option name="properties" type="Map">
+              <Option name="storageUrl" type="Map">
+                <Option value="true" name="active" type="bool"/>
+                <Option value="\'http://webdav/shapeData/\'||file_name(@selected_file_path)" name="expression" type="QString"/>
+                <Option value="3" name="type" type="int"/>
+              </Option>
+            </Option>
+            <Option value="collection" name="type" type="QString"/>
+          </Option>
+          <Option value="0" name="RelativeStorage" type="int"/>
+          <Option value="k6k7lv8" name="StorageAuthConfigId" type="QString"/>
+          <Option value="0" name="StorageMode" type="int"/>
+          <Option value="WebDAV" name="StorageType" type="QString"/>
+        </Option>
+        ';
+        $oXml = App\XmlTools::xmlReaderFromString($xmlStr);
+        $this->assertEquals('Map', $oXml->getAttribute('type'));
+
+        $options = Project\QgisProjectParser::readOption($oXml);
+
+        $this->assertTrue(is_array($options));
+        $expectedOptions = array(
+                'DocumentViewer' => 1,
+                'DocumentViewerHeight' => 0,
+                'DocumentViewerWidth' => 0,
+                'FileWidget' => true,
+                'FileWidgetButton' => true,
+                'FileWidgetFilter' => '',
+                'PropertyCollection' => array(
+                  'name' => '',
+                  'properties' => array(
+                    'storageUrl' => array (
+                      'active' => true,
+                      'expression' => '\'http://webdav/shapeData/\'||file_name(@selected_file_path)',
+                      'type' => 3,
+                    ),
+                  ),
+                  'type' => 'collection',
+                ),
+                'RelativeStorage' => 0,
+                'StorageAuthConfigId' => 'k6k7lv8',
+                'StorageMode' => 0,
+                'StorageType' => 'WebDAV',
+        );
+        $this->assertEquals($expectedOptions, $options);
     }
 
     public function testReadQgisMapLayerEditWidgetConfig()
