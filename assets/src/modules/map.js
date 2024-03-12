@@ -259,11 +259,11 @@ export default class map extends olMap {
                     });
 
                     // Force no cache w/ Firefox
-                    if(navigator.userAgent.includes("Firefox")){
+                    /*if(navigator.userAgent.includes("Firefox")){
                         layer.getSource().setImageLoadFunction((image, src) => {
                             (image.getImage()).src = src + '&ts=' + Date.now();
                         });
-                    }
+                    }*/
 
                     if (useTileWms) {
                         layer = new TileLayer({

@@ -609,15 +609,26 @@ class serviceCtrl extends jController
 
         /** @var jResponseBinary $rep */
         $rep = $this->getResponse('binary');
+
+        $etag = '';
+        if ($this->canBeCached() && $result->code < 400) {
+            $etag = base_convert(strlen($result->data), 10, 16).'-'.sha1($result->data);
+            if ($this->canBeCached() && $rep->isValidCache(null, $etag)) {
+                $this->setACAOHeader($rep);
+
+                return $rep;
+            }
+        }
+
         $filename = 'qgis_server_wms_map_'.$this->repository->getKey().'_'.$this->project->getKey();
-        $this->setupBinaryResponse($rep, $result, $filename);
+        $this->setupBinaryResponse($rep, $result, $filename, $etag);
 
         if (!preg_match('/^image/', $result->mime)) {
             return $rep;
         }
 
         // HTTP browser cache expiration time
-        $layername = $this->params['layers'];
+        /*$layername = $this->params['layers'];
         $lproj = $this->project;
         $configLayers = $lproj->getLayers();
         if (property_exists($configLayers, $layername)) {
@@ -626,7 +637,7 @@ class serviceCtrl extends jController
                 $clientCacheExpiration = (int) $configLayer->clientCacheExpiration;
                 $rep->setExpires('+'.$clientCacheExpiration.' seconds');
             }
-        }
+        }*/
 
         lizmap::logMetric('LIZMAP_SERVICE_GETMAP', 'WMS', array(
             'qgisParams' => $wmsRequest->parameters(),
