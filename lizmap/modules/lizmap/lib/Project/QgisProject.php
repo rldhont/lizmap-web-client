@@ -747,6 +747,10 @@ class QgisProject
      */
     public function getPrintTemplates()
     {
+        if ($this->path) {
+            $project = Qgis\ProjectInfo::fromQgisPath($this->path);
+            return $project->getLayoutsAsKeyArray();
+        }
         // get restricted composers
         $rComposers = array();
         $restrictedComposers = $this->xml->xpath('//properties/WMSRestrictedComposers/value');
@@ -872,6 +876,58 @@ class QgisProject
         foreach ($locateByLayer as $k => $v) {
             $locateLayerIds[] = $v->layerId;
         }
+
+        // update locateByLayer with project from path
+        if ($this->path) {
+            $project = Qgis\ProjectInfo::fromQgisPath($this->path);
+
+            // update locateByLayer with alias and filter information
+            foreach ($locateByLayer as $k => $v) {
+                $updateLocate = False;
+                $layer = $project->getLayerById($v->layerId);
+                // Get field alias
+                $alias = $layer->getFieldAlias($v->fieldName);
+                if ($alias !== null) {
+                    // Update locate with field alias
+                    $v->fieldAlias = $alias;
+                    $updateLocate = True;
+                }
+                if (property_exists($v, 'filterFieldName')) {
+                    // Get filter field alias
+                    $filterAlias = $layer->getFieldAlias($v->filterFieldName);
+                    if ($filterAlias !== null) {
+                        // Update locate with filter field alias
+                        $v->filterFieldAlias = $filterAlias;
+                        $updateLocate = True;
+                    }
+                }
+                // Get joins
+                if ($layer->vectorjoins !== null && count($layer->vectorjoins) > 0) {
+                    if (!property_exists($v, 'vectorjoins')) {
+                        // Add joins to locate
+                        $v->vectorjoins = array();
+                        $updateLocate = True;
+                    }
+                    foreach ($layer->vectorjoins as $vectorjoin) {
+                        if (in_array($vectorjoin->joinLayerId, $locateLayerIds)) {
+                            // Add join info to locate
+                            $v->vectorjoins[] = (object) array(
+                                'joinFieldName' => $vectorjoin->joinFieldName,
+                                'targetFieldName' => $vectorjoin->targetFieldName,
+                                'joinLayerId' => $vectorjoin->joinLayerId,
+                            );
+                            $updateLocate = True;
+                        }
+                    }
+                }
+                if ($updateLocate) {
+                    // Update locate if needed
+                    $locateByLayer->{$k} = $v;
+                }
+            }
+            return;
+        }
+
         // update locateByLayer with alias and filter information
         foreach ($locateByLayer as $k => $v) {
             $xmlLayer = $this->getXmlLayer2($this->xml, $v->layerId);
@@ -919,6 +975,27 @@ class QgisProject
      */
     public function readEditionLayers($editionLayers)
     {
+        if ($this->path) {
+            $project = Qgis\ProjectInfo::fromQgisPath($this->path);
+            foreach ($editionLayers as $key => $obj) {
+                // Improve performance by getting provider directly from config
+                // Available for lizmap plugin >= 3.3.2
+                if (property_exists($obj, 'provider')) {
+                    if ($obj->provider == 'spatialite') {
+                        unset($editionLayers->{$key});
+                    }
+
+                    continue;
+                }
+                // check for embedded layers
+                $layer = $project->getLayerById($obj->layerId);
+                if ($layer->provider == 'spatialite') {
+                    unset($editionLayers->{$key});
+                }
+            }
+            return;
+        }
+
         $embeddedEditionLayers = array();
         foreach ($editionLayers as $key => $obj) {
             // Improve performance by getting provider directly from config
@@ -1210,10 +1287,19 @@ class QgisProject
             throw new \Exception('The QGIS project '.basename($qgs_path).' has invalid content!');
         }
         $this->xml = $qgsXml;
+
+        $project = Qgis\ProjectInfo::fromQgisPath($qgs_path);
+
         // Build data
         $this->data = array(
+            'title' => $project->properties->WMSServiceTitle,
+            'abstract' => $project->properties->WMSServiceAbstract,
+            'keywordList' => implode(', ', $project->properties->WMSKeywordList),
+            'wmsMaxWidth' => $project->properties->WMSMaxWidth,
+            'wmsMaxHeight' => $project->properties->WMSMaxHeight,
         );
 
+/*
         // get title from WMS properties
         if (property_exists($qgsXml->properties, 'WMSServiceTitle')) {
             if (!empty($qgsXml->properties->WMSServiceTitle)) {
@@ -1252,19 +1338,42 @@ class QgisProject
         if (!array_key_exists('WMSMaxHeight', $this->data) or !$this->data['wmsMaxHeight']) {
             unset($this->data['wmsMaxHeight']);
         }
+        */
 
         // get QGIS project version
-        $this->qgisProjectVersion = $this->readQgisProjectVersion($qgsXml);
-        $this->lastSaveDateTime = $this->readLastSaveDateTime($qgs_path);
+        //$this->qgisProjectVersion = $this->readQgisProjectVersion($qgsXml);
+        $this->qgisProjectVersion = $this->convertQgisProjectVersion($project->version);
+        //$this->lastSaveDateTime = $this->readLastSaveDateTime($qgs_path);
+        $this->lastSaveDateTime = $project->saveDateTime;
 
-        $this->WMSInformation = $this->readWMSInformation($qgsXml);
-        $this->canvasColor = $this->readCanvasColor($qgsXml);
-        $this->allProj4 = $this->readAllProj4($qgsXml);
-        $this->themes = $this->readThemes($qgsXml);
-        $this->customProjectVariables = $this->readCustomProjectVariables($qgsXml);
-        $this->useLayerIDs = $this->readUseLayerIDs($qgsXml);
-        $this->layers = $this->readLayers($qgsXml);
-        list($this->relations, $this->relationsFields) = $this->readRelations($qgsXml);
+        //$this->WMSInformation = $this->readWMSInformation($qgsXml);
+        $this->WMSInformation = array(
+            'WMSServiceTitle' => $project->properties->WMSServiceTitle,
+            'WMSServiceAbstract' => $project->properties->WMSServiceAbstract,
+            'WMSKeywordList' => implode(', ', $project->properties->WMSKeywordList),
+            'WMSExtent' => implode(', ', $project->properties->WMSExtent),
+            'ProjectCrs' => $project->projectCrs->authid,
+            'WMSOnlineResource' => $project->properties->WMSOnlineResource,
+            'WMSContactMail' => $project->properties->WMSContactMail,
+            'WMSContactOrganization' => $project->properties->WMSContactOrganization,
+            'WMSContactPerson' => $project->properties->WMSContactPerson,
+            'WMSContactPhone' => $project->properties->WMSContactPhone,
+        );
+        //$this->canvasColor = $this->readCanvasColor($qgsXml);
+        $this->canvasColor = $project->properties->Gui->getCanvasColor();
+        //$this->allProj4 = $this->readAllProj4($qgsXml);
+        $this->allProj4 = $project->getProjAsKeyArray();
+        //$this->themes = $this->readThemes($qgsXml);
+        $this->themes = $project->getVisibilityPresetsAsKeyArray();
+        //$this->customProjectVariables = $this->readCustomProjectVariables($qgsXml);
+        $this->customProjectVariables = $project->properties->Variables->getVariablesAsKeyArray();
+        //$this->useLayerIDs = $this->readUseLayerIDs($qgsXml);
+        $this->useLayerIDs = $project->properties->WMSUseLayerIDs !== null ? $project->properties->WMSUseLayerIDs : false;
+        //$this->layers = $this->readLayers($qgsXml);
+        $this->layers = $project->getLayersAsKeyArray();
+        //list($this->relations, $this->relationsFields) = $this->readRelations($qgsXml);
+        $this->relations = $project->getRelationsAsKeyArray();
+        $this->relationsFields = $project->getRelationFieldsAsKeyArray();
     }
 
     /**
@@ -1330,18 +1439,17 @@ class QgisProject
     }
 
     /**
-     * @param \SimpleXMLElement $xml
+     * @param string $version
+     *
+     * @return int
      */
-    protected function readQgisProjectVersion($xml)
+    protected function convertQgisProjectVersion($version)
     {
-        $qgisRoot = $xml->xpath('//qgis');
-        $qgisRootZero = $qgisRoot[0];
-        $qgisProjectVersion = (string) $qgisRootZero->attributes()->version;
-        $qgisProjectVersion = explode('-', $qgisProjectVersion);
-        $qgisProjectVersion = $qgisProjectVersion[0];
-        $qgisProjectVersion = explode('.', $qgisProjectVersion);
+        $version = explode('-', $version);
+        $version = $version[0];
+        $version = explode('.', $version);
         $a = '';
-        foreach ($qgisProjectVersion as $k) {
+        foreach ($version as $k) {
             if (strlen($k) == 1) {
                 $a .= '0'.$k;
             } else {
@@ -1350,6 +1458,18 @@ class QgisProject
         }
 
         return (int) $a;
+    }
+
+    /**
+     * @param \SimpleXMLElement $xml
+     *
+     * @return int
+     */
+    protected function readQgisProjectVersion($xml)
+    {
+        $qgisRoot = $xml->xpath('//qgis');
+        $qgisRootZero = $qgisRoot[0];
+        return $this->convertQgisProjectVersion((string) $qgisRootZero->attributes()->version);
     }
 
     /**
