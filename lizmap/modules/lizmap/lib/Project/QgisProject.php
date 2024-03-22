@@ -1210,10 +1210,20 @@ class QgisProject
             throw new \Exception('The QGIS project '.basename($qgs_path).' has invalid content!');
         }
         $this->xml = $qgsXml;
+
+        $oXml = App\XmlTools::xmlReaderFromFile($qgs_path);
+        $project = Qgis\ProjectInfo::fromXmlReader($oXml);
+
         // Build data
         $this->data = array(
+            'title' => $project->properties->WMSServiceTitle,
+            'abstract' => $project->properties->WMSServiceAbstract,
+            'keywordList' => implode(', ', $project->properties->WMSKeywordList),
+            'wmsMaxWidth' => $project->properties->WMSMaxWidth,
+            'wmsMaxHeight' => $project->properties->WMSMaxHeight,
         );
 
+/*
         // get title from WMS properties
         if (property_exists($qgsXml->properties, 'WMSServiceTitle')) {
             if (!empty($qgsXml->properties->WMSServiceTitle)) {
@@ -1252,17 +1262,37 @@ class QgisProject
         if (!array_key_exists('WMSMaxHeight', $this->data) or !$this->data['wmsMaxHeight']) {
             unset($this->data['wmsMaxHeight']);
         }
+        */
 
         // get QGIS project version
-        $this->qgisProjectVersion = $this->readQgisProjectVersion($qgsXml);
-        $this->lastSaveDateTime = $this->readLastSaveDateTime($qgs_path);
+        //$this->qgisProjectVersion = $this->readQgisProjectVersion($qgsXml);
+        $this->qgisProjectVersion = $this->convertQgisProjectVersion($project->version);
+        //$this->lastSaveDateTime = $this->readLastSaveDateTime($qgs_path);
+        $this->lastSaveDateTime = $project->saveDateTime;
 
-        $this->WMSInformation = $this->readWMSInformation($qgsXml);
-        $this->canvasColor = $this->readCanvasColor($qgsXml);
-        $this->allProj4 = $this->readAllProj4($qgsXml);
-        $this->themes = $this->readThemes($qgsXml);
-        $this->customProjectVariables = $this->readCustomProjectVariables($qgsXml);
-        $this->useLayerIDs = $this->readUseLayerIDs($qgsXml);
+        //$this->WMSInformation = $this->readWMSInformation($qgsXml);
+        $this->WMSInformation = array(
+            'WMSServiceTitle' => $project->properties->WMSServiceTitle,
+            'WMSServiceAbstract' => $project->properties->WMSServiceAbstract,
+            'WMSKeywordList' => implode(', ', $project->properties->WMSKeywordList),
+            'WMSExtent' => implode(', ', $project->properties->WMSExtent),
+            'ProjectCrs' => $project->projectCrs->authid,
+            'WMSOnlineResource' => $project->properties->WMSOnlineResource,
+            'WMSContactMail' => $project->properties->WMSContactMail,
+            'WMSContactOrganization' => $project->properties->WMSContactOrganization,
+            'WMSContactPerson' => $project->properties->WMSContactPerson,
+            'WMSContactPhone' => $project->properties->WMSContactPhone,
+        );
+        //$this->canvasColor = $this->readCanvasColor($qgsXml);
+        $this->canvasColor = $project->properties->Gui->getCanvasColor();
+        //$this->allProj4 = $this->readAllProj4($qgsXml);
+        $this->allProj4 = $project->getProjAsKeyArray();
+        //$this->themes = $this->readThemes($qgsXml);
+        $this->themes = $project->getVisibilityPresetsAsKeyArray();
+        //$this->customProjectVariables = $this->readCustomProjectVariables($qgsXml);
+        $this->customProjectVariables = $project->properties->Variables->getVariablesAsKeyArray();
+        //$this->useLayerIDs = $this->readUseLayerIDs($qgsXml);
+        $this->useLayerIDs = $project->properties->WMSUseLayerIDs !== null ? $project->properties->WMSUseLayerIDs : false;
         $this->layers = $this->readLayers($qgsXml);
         list($this->relations, $this->relationsFields) = $this->readRelations($qgsXml);
     }
@@ -1327,18 +1357,17 @@ class QgisProject
     }
 
     /**
-     * @param \SimpleXMLElement $xml
+     * @param string $version
+     *
+     * @return int
      */
-    protected function readQgisProjectVersion($xml)
+    protected function convertQgisProjectVersion($version)
     {
-        $qgisRoot = $xml->xpath('//qgis');
-        $qgisRootZero = $qgisRoot[0];
-        $qgisProjectVersion = (string) $qgisRootZero->attributes()->version;
-        $qgisProjectVersion = explode('-', $qgisProjectVersion);
-        $qgisProjectVersion = $qgisProjectVersion[0];
-        $qgisProjectVersion = explode('.', $qgisProjectVersion);
+        $version = explode('-', $version);
+        $version = $version[0];
+        $version = explode('.', $version);
         $a = '';
-        foreach ($qgisProjectVersion as $k) {
+        foreach ($version as $k) {
             if (strlen($k) == 1) {
                 $a .= '0'.$k;
             } else {
@@ -1347,6 +1376,18 @@ class QgisProject
         }
 
         return (int) $a;
+    }
+
+    /**
+     * @param \SimpleXMLElement $xml
+     *
+     * @return int
+     */
+    protected function readQgisProjectVersion($xml)
+    {
+        $qgisRoot = $xml->xpath('//qgis');
+        $qgisRootZero = $qgisRoot[0];
+        return $this->convertQgisProjectVersion((string) $qgisRootZero->attributes()->version);
     }
 
     /**
