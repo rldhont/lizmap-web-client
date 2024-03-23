@@ -26,6 +26,7 @@ class VectorLayerField extends Project\Qgis\BaseQgisXmlObject
     protected $properties = array(
         'name',
         'configurationFlags',
+        'editWidget',
     );
 
     /** @var Array<string> The not null properties */
@@ -63,4 +64,9 @@ class VectorLayerField extends Project\Qgis\BaseQgisXmlObject
             'configurationFlags' => $oXmlReader->getAttribute('configurationFlags'),
         );
     }
+
+    static protected $childParsers = array();
 }
+VectorLayerField::registerChildParser('editWidget', function($oXmlReader) {
+    return VectorLayerEditWidget::fromXmlReader($oXmlReader);
+});
