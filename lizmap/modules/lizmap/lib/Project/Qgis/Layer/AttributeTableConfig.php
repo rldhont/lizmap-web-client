@@ -31,6 +31,31 @@ class AttributeTableConfig extends Project\Qgis\BaseQgisXmlObject
         'columns',
     );
 
+    /**
+     * Get vector layer attribute table config as key array
+     *
+     * @return array
+     */
+    function toKeyArray()
+    {
+        $data = array();
+        if ($this->columns) {
+            foreach($this->columns as $idx => $column) {
+                if ($column->hidden) {
+                    continue;
+                }
+                $data[] = array(
+                    'index' => $idx,
+                    'type' => $column->type,
+                    'name' => $column->name,
+                );
+            }
+        }
+        return array(
+            'columns' => $data
+        );
+    }
+
     /** @var string The XML element local name */
     static protected $qgisLocalName = 'attributetableconfig';
 

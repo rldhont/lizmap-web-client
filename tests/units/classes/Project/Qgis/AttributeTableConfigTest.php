@@ -121,5 +121,62 @@ class AttributeTableConfigTest extends TestCase
                 $this->assertEquals($value, $config->columns[$idx]->$prop, $idx.' '.$prop);
             }
         }
+
+        $configKeyArray = $config->toKeyArray();
+        $this->assertTrue(is_array($configKeyArray));
+        $this->assertArrayHasKey('columns', $configKeyArray);
+        $this->assertCount(9, $configKeyArray['columns']);
+        $columns = array(
+            array(
+                'index' => 0,
+                'type' => 'field',
+                'name' => 'nid',
+            ),
+            array(
+                'index' => 1,
+                'type' => 'field',
+                'name' => 'titre',
+            ),
+            array(
+                'index' => 4,
+                'type' => 'field',
+                'name' => 'field_date',
+            ),
+            array(
+                'index' => 6,
+                'type' => 'field',
+                'name' => 'field_communes',
+            ),
+            array(
+                'index' => 7,
+                'type' => 'field',
+                'name' => 'field_lieu',
+            ),
+            array(
+                'index' => 8,
+                'type' => 'field',
+                'name' => 'field_access',
+            ),
+            array(
+                'index' => 9,
+                'type' => 'field',
+                'name' => 'field_thematique',
+            ),
+            array(
+                'index' => 12,
+                'type' => 'field',
+                'name' => 'url',
+            ),
+            array(
+                'index' => 14,
+                'type' => 'field',
+                'name' => 'fid',
+            ),
+        );
+        foreach($columns as $idx => $data) {
+            foreach($data as $prop => $value) {
+                $this->assertEquals($value, $configKeyArray['columns'][$idx][$prop], $idx.' '.$prop);
+            }
+        }
     }
 }
