@@ -1163,6 +1163,22 @@ class QgisProject
      */
     public function readAttributeLayers($attributeLayers)
     {
+        if ($this->path) {
+            $project = Qgis\ProjectInfo::fromQgisPath($this->path);
+            // Get field order & visibility
+            foreach ($attributeLayers as $key => $obj) {
+                // Improve performance by getting custom_config status directly from config
+                // Available for lizmap plugin >= 3.3.3
+                if (property_exists($obj, 'custom_config') && $obj->custom_config != 'True') {
+                    continue;
+                }
+
+                $layer = $project->getLayerById($obj->layerId);
+                $obj->attributetableconfig = $layer->attributetableconfig->toKeyArray();
+            }
+            return;
+        }
+
         // Get field order & visibility
         foreach ($attributeLayers as $key => $obj) {
             // Improve performance by getting custom_config status directly from config
@@ -1294,7 +1310,7 @@ class QgisProject
         $this->data = array(
             'title' => $project->properties->WMSServiceTitle,
             'abstract' => $project->properties->WMSServiceAbstract,
-            'keywordList' => implode(', ', $project->properties->WMSKeywordList),
+            'keywordList' => is_array($project->properties->WMSKeywordList) ? implode(', ', $project->properties->WMSKeywordList) : '',
             'wmsMaxWidth' => $project->properties->WMSMaxWidth,
             'wmsMaxHeight' => $project->properties->WMSMaxHeight,
         );
@@ -1350,8 +1366,8 @@ class QgisProject
         $this->WMSInformation = array(
             'WMSServiceTitle' => $project->properties->WMSServiceTitle,
             'WMSServiceAbstract' => $project->properties->WMSServiceAbstract,
-            'WMSKeywordList' => implode(', ', $project->properties->WMSKeywordList),
-            'WMSExtent' => implode(', ', $project->properties->WMSExtent),
+            'WMSKeywordList' => is_array($project->properties->WMSKeywordList) ? implode(', ', $project->properties->WMSKeywordList) : '',
+            'WMSExtent' => is_array($project->properties->WMSExtent) ? implode(', ', $project->properties->WMSExtent) : '',
             'ProjectCrs' => $project->projectCrs->authid,
             'WMSOnlineResource' => $project->properties->WMSOnlineResource,
             'WMSContactMail' => $project->properties->WMSContactMail,
@@ -1366,7 +1382,7 @@ class QgisProject
         //$this->themes = $this->readThemes($qgsXml);
         $this->themes = $project->getVisibilityPresetsAsKeyArray();
         //$this->customProjectVariables = $this->readCustomProjectVariables($qgsXml);
-        $this->customProjectVariables = $project->properties->Variables->getVariablesAsKeyArray();
+        $this->customProjectVariables = $project->properties->Variables !== null ? $project->properties->Variables->getVariablesAsKeyArray() : array();
         //$this->useLayerIDs = $this->readUseLayerIDs($qgsXml);
         $this->useLayerIDs = $project->properties->WMSUseLayerIDs !== null ? $project->properties->WMSUseLayerIDs : false;
         //$this->layers = $this->readLayers($qgsXml);
