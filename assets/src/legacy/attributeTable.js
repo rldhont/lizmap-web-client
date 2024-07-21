@@ -1780,14 +1780,14 @@ var lizAttributeTable = function() {
                         }
                         var lizcols = columns.slice(0, firstDisplayedColIndex);
                         var newcolumns = [];
-                        for (const column of columns) {
-                            if (!('data' in column)) {
+                        for (var x in atc) {
+                            var colx = atc[x];
+                            // Do nothing if the item does not reference a field
+                            if (colx.type != 'field') {
                                 continue;
                             }
-                            for (var x in atc) {
-                                var colx = atc[x];
-                                // Do nothing if the item does not reference a field
-                                if (colx.type != 'field') {
+                            for (const column of columns) {
+                                if (!('data' in column)) {
                                     continue;
                                 }
                                 if (colx.name == column.data) {
