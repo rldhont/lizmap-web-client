@@ -1,13 +1,13 @@
 // @ts-check
-import { test, expect } from '@playwright/test';
+import { test, expect, APIResponse } from '@playwright/test';
 
 const url = 'index.php/view/app/metadata';
 
 /**
  * Check for a JSON response about the metadata
- * @param {Response} response The response object
+ * @param {APIResponse} response The response object
  *
- * @return {JSON} The JSON response
+ * @return {Promise<Object>} The JSON response
  */
 export async function checkJson(response) {
     expect(response.ok()).toBeTruthy();
