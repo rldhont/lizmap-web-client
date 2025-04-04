@@ -636,9 +636,6 @@ export default class map extends olMap {
             }
         });
 
-        // Init view
-        this.syncNewOLwithOL2View();
-
         // Listen/Dispatch events
         this.getView().on('change', () => {
             if (this.isDragZoomActive) {
@@ -801,30 +798,6 @@ export default class map extends olMap {
             }, ['ext-group.removed']
         );
 
-        // Create the highlight layer
-        // used to display features on top of all layers
-        const styleColor = 'rgba(255,255,0,0.8)';
-        const styleWidth = 3;
-        this._highlightLayer = new VectorLayer({
-            source: new VectorSource({
-                wrapX: false
-            }),
-            style: {
-                'circle-stroke-color': styleColor,
-                'circle-stroke-width': styleWidth,
-                'circle-radius': 6,
-                'stroke-color': styleColor,
-                'stroke-width': styleWidth,
-            }
-        });
-        this.addToolLayer(this._highlightLayer);
-
-        // Add startup features to map if any
-        const startupFeatures = mapState.startupFeatures;
-        if (startupFeatures) {
-            this.setHighlightFeatures(startupFeatures, "geojson");
-        }
-
         mapState.addListener(
             evt => {
                 const view = this.getView();
@@ -853,6 +826,33 @@ export default class map extends olMap {
             },
             ['map.state.changed']
         );
+
+        // Create the highlight layer
+        // used to display features on top of all layers
+        const styleColor = 'rgba(255,255,0,0.8)';
+        const styleWidth = 3;
+        this._highlightLayer = new VectorLayer({
+            source: new VectorSource({
+                wrapX: false
+            }),
+            style: {
+                'circle-stroke-color': styleColor,
+                'circle-stroke-width': styleWidth,
+                'circle-radius': 6,
+                'stroke-color': styleColor,
+                'stroke-width': styleWidth,
+            }
+        });
+        this.addToolLayer(this._highlightLayer);
+
+        // Init view
+        this.syncNewOLwithOL2View();
+
+        // Add startup features to map if any
+        const startupFeatures = mapState.startupFeatures;
+        if (startupFeatures) {
+            this.setHighlightFeatures(startupFeatures, "geojson");
+        }
     }
 
     get hasEmptyBaseLayer() {
