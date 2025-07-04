@@ -215,12 +215,17 @@ class Repository
         return $this->data['path'];
     }
 
+    public function hasValidPath(): bool
+    {
+        return $this->getPath() !== false;
+    }
+
     public static function getProperties()
     {
         return self::$properties;
     }
 
-    public function getRepoProperties()
+    public static function getRepoProperties()
     {
         return self::$properties;
     }
