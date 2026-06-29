@@ -153,8 +153,9 @@ async function CatchErrors(page, layersInTreeView = 0) {
  * @deprecated Use Project page instead and migrate the test to use proper methods
  */
 export async function gotoMap(url, page, mapMustLoad = true, layersInTreeView = 0, waitForGetLegendGraphic = true) {
+    // Test the page to be sure it will open
     await expect(async () => {
-        const response = await page.goto(url);
+        const response = await page.request.get(url);
         expect(response?.status()).toBeLessThan(400);
     }).toPass({
         intervals: [1_000, 2_000, 10_000],
@@ -162,6 +163,9 @@ export async function gotoMap(url, page, mapMustLoad = true, layersInTreeView = 
     });
     // Wait for WMS GetCapabilities promise once page opened
     let getCapabilitiesWMSPromise = page.waitForRequest(/SERVICE=WMS&REQUEST=GetCapabilities/);
+
+    // Go to the map
+    await page.goto(url);
 
     // Wait for WMS GetCapabilities
     let getCapabilitiesWMSRequest = await getCapabilitiesWMSPromise;
