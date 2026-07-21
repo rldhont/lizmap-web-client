@@ -219,10 +219,9 @@ jobs:
 
       - name: Prepare the database diff from Playwright "@readonly" tests
         if: |
-          steps.qgis-server-status.outcome == 'success' &&
-          ( success() ||
+          success() ||
           steps.test-playwright-requests.outcome != 'success' ||
-          steps.test-playwright-read-only.outcome != 'success' )
+          steps.test-playwright-read-only.outcome != 'success'
         run: |
           ./lizmap-ctl dump-pgsql-data
           git diff --exit-code qgis-projects/tests/tests_dataset_data.sql
