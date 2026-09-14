@@ -1499,6 +1499,8 @@ class serviceCtrl extends jController
         // Get params
         $typename = $this->params['typename'];
         $filter = $this->params['filter'];
+        // TODO: check if filter is valid
+        // $typename:$qgis_wms_filter
 
         // Token
         $data = $this->_getFilterToken($this->iParam('repository'), $this->iParam('project'), $typename, $filter);
